@@ -9,8 +9,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="GPS Site Photo">
-<link rel="manifest" href="./manifest.webmanifest?v=3.1">
-<link rel="apple-touch-icon" href="./icon-180.png?v=3.1">
+<link rel="manifest" href="./manifest.webmanifest?v=4">
+<link rel="apple-touch-icon" href="./icon-180.png?v=4">
 
 <title>GPS Site Photo</title>
 
@@ -456,6 +456,36 @@ canvas {
     line-height: 1.4;
 }
 
+
+/* V4 PHOTO SESSION */
+.session-panel {
+    margin: 0 12px 12px;
+    padding: 12px;
+    border: 1px solid #1e293b;
+    border-radius: 12px;
+    background: #0f172a;
+}
+.session-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+.session-title { font-weight: 800; font-size: 14px; }
+.session-count { color: #86efac; font-size: 12px; font-weight: 700; }
+.session-empty { color: #64748b; font-size: 12px; padding: 8px 0; }
+.session-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 7px;
+    margin-bottom: 10px;
+}
+.session-thumb { position: relative; aspect-ratio: 1 / 1; overflow: hidden; border-radius: 8px; background: #020617; border: 1px solid #334155; }
+.session-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.session-thumb span { position: absolute; right: 3px; bottom: 3px; background: rgba(0,0,0,.75); color: white; border-radius: 5px; padding: 2px 4px; font-size: 9px; font-weight: 700; }
+.session-actions { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; }
+.session-actions button { min-height: 44px; padding: 10px 8px; }
 @media (max-width: 480px) {
     .header { padding-left: 13px; padding-right: 13px; }
     .header h1 { font-size: 19px; }
@@ -479,7 +509,7 @@ canvas {
 
             <div>
                 <h1>📷 GPS Site Photo</h1>
-                <small>Site inspection camera · v3.1</small>
+                <small>Site inspection camera · v4</small>
                 <div id="networkBadge" class="network-badge">● Checking connection</div>
             </div>
 
@@ -640,16 +670,30 @@ canvas {
                 id="downloadBtn"
                 class="blue">
 
-                💾 SAVE & NEXT
+                ➕ ADD & NEXT
 
             </button>
 
         </div>
 
-        <div class="save-hint">Saves/shares the stamped JPG, then gets the camera ready for the next photo.</div>
+        <div class="save-hint">Adds this photo to the current session. Save the whole session to Photos/Gallery when finished.</div>
 
     </div>
 
+
+    <div id="sessionPanel" class="session-panel">
+        <div class="session-head">
+            <div class="session-title">📸 Current photo session</div>
+            <div id="sessionCount" class="session-count">0 photos</div>
+        </div>
+        <div id="sessionEmpty" class="session-empty">No photos yet. Take a photo and tap ADD &amp; NEXT.</div>
+        <div id="sessionGrid" class="session-grid"></div>
+        <div class="session-actions">
+            <button id="saveAllBtn" class="blue" type="button" disabled>💾 SAVE ALL (0)</button>
+            <button id="clearSessionBtn" class="dark" type="button" disabled>🗑 CLEAR</button>
+        </div>
+        <div class="save-hint" style="margin:8px 0 0">On iPhone, choose “Save Images” in the share sheet to add all session photos to Photos together.</div>
+    </div>
 
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
@@ -710,6 +754,8 @@ let gpsWatchId = null;
 let wakeLock = null;
 let deferredInstallPrompt = null;
 let lastGeocodeAt = 0;
+let sessionPhotos = [];
+let capturedPhotoNumber = null;
 
 
 /* -------------------------
@@ -1321,6 +1367,8 @@ function capturePhoto() {
     photoCounter.textContent =
         formatPhotoNumber(photoNumber);
 
+    capturedPhotoNumber = formatPhotoNumber(photoNumber);
+
 
     const project =
         document
@@ -1753,7 +1801,7 @@ document
    SAVE / SHARE PHOTO
    ========================================================= */
 
-function getPhotoFilename() {
+function getPhotoFilename(numberOverride = null) {
 
     const project =
         document
@@ -1762,8 +1810,7 @@ function getPhotoFilename() {
             .trim()
             .replace(/[^a-z0-9-_]/gi, "_");
 
-    const number =
-        photoCounter.textContent;
+    const number = numberOverride || photoCounter.textContent;
 
     const date =
         new Date()
@@ -1772,115 +1819,196 @@ function getPhotoFilename() {
 
     return (
         (project || "SITE_PHOTO") +
-        "_" +
-        number +
-        "_" +
-        date +
-        ".jpg"
+        "_" + number + "_" + date + ".jpg"
     );
 }
 
 async function dataUrlToFile(dataUrl, filename) {
-
     const response = await fetch(dataUrl);
     const blob = await response.blob();
-
-    return new File(
-        [blob],
-        filename,
-        { type: "image/jpeg" }
-    );
+    return new File([blob], filename, { type: "image/jpeg" });
 }
-
-function fallbackDownload(filename) {
-
-    const link =
-        document.createElement("a");
-
-    link.download = filename;
-    link.href = capturedImage;
-
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
-
 
 function showToast(message) {
     const toast = document.getElementById("toast");
     toast.textContent = message;
     toast.classList.add("show");
     clearTimeout(showToast.timer);
-    showToast.timer = setTimeout(() => {
-        toast.classList.remove("show");
-    }, 2200);
+    showToast.timer = setTimeout(() => toast.classList.remove("show"), 2400);
 }
 
-function readyForNextPhoto() {
+/* ---- IndexedDB session storage ---- */
+const SESSION_DB = "gps-site-photo-session-v1";
+const SESSION_STORE = "photos";
+
+function openSessionDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(SESSION_DB, 1);
+        request.onupgradeneeded = () => {
+            const db = request.result;
+            if (!db.objectStoreNames.contains(SESSION_STORE)) {
+                db.createObjectStore(SESSION_STORE, { keyPath: "id" });
+            }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+async function persistSessionPhoto(photo) {
+    const db = await openSessionDB();
+    await new Promise((resolve, reject) => {
+        const tx = db.transaction(SESSION_STORE, "readwrite");
+        tx.objectStore(SESSION_STORE).put(photo);
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+}
+
+async function loadSessionPhotos() {
+    try {
+        const db = await openSessionDB();
+        sessionPhotos = await new Promise((resolve, reject) => {
+            const req = db.transaction(SESSION_STORE, "readonly").objectStore(SESSION_STORE).getAll();
+            req.onsuccess = () => resolve(req.result || []);
+            req.onerror = () => reject(req.error);
+        });
+        db.close();
+        sessionPhotos.sort((a, b) => a.createdAt - b.createdAt);
+        renderSession();
+    } catch (error) {
+        console.log("Session storage unavailable", error);
+    }
+}
+
+async function clearStoredSession() {
+    const db = await openSessionDB();
+    await new Promise((resolve, reject) => {
+        const tx = db.transaction(SESSION_STORE, "readwrite");
+        tx.objectStore(SESSION_STORE).clear();
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+}
+
+function renderSession() {
+    const grid = document.getElementById("sessionGrid");
+    const count = document.getElementById("sessionCount");
+    const empty = document.getElementById("sessionEmpty");
+    const saveAll = document.getElementById("saveAllBtn");
+    const clear = document.getElementById("clearSessionBtn");
+
+    grid.innerHTML = "";
+    const n = sessionPhotos.length;
+    count.textContent = n + (n === 1 ? " photo" : " photos");
+    saveAll.textContent = "💾 SAVE ALL (" + n + ")";
+    saveAll.disabled = n === 0;
+    clear.disabled = n === 0;
+    empty.style.display = n ? "none" : "block";
+
+    sessionPhotos.slice(-12).forEach(photo => {
+        const item = document.createElement("div");
+        item.className = "session-thumb";
+        const img = document.createElement("img");
+        img.src = photo.dataUrl;
+        const tag = document.createElement("span");
+        tag.textContent = photo.number;
+        item.append(img, tag);
+        grid.appendChild(item);
+    });
+}
+
+function readyForNextPhoto(message = "✓ Added. Ready for the next photo.") {
     preview.style.display = "none";
     capturedImage = null;
+    capturedPhotoNumber = null;
     document.getElementById("notes").value = "";
-    document.querySelector(".camera").scrollIntoView({
-        behavior: "smooth",
-        block: "start"
-    });
-    showToast("✓ Saved. Ready for the next photo.");
+    document.querySelector(".camera").scrollIntoView({ behavior: "smooth", block: "start" });
+    showToast(message);
 }
 
-document
-    .getElementById("downloadBtn")
-    .addEventListener(
-        "click",
-        async () => {
+async function addCurrentPhotoToSession() {
+    if (!capturedImage) return;
 
-            if (!capturedImage) {
-                return;
+    const number = capturedPhotoNumber || photoCounter.textContent;
+    const photo = {
+        id: Date.now() + "-" + Math.random().toString(16).slice(2),
+        number,
+        filename: getPhotoFilename(number),
+        dataUrl: capturedImage,
+        createdAt: Date.now()
+    };
+
+    sessionPhotos.push(photo);
+    renderSession();
+
+    try {
+        await persistSessionPhoto(photo);
+    } catch (error) {
+        console.log("Could not persist photo session", error);
+    }
+
+    readyForNextPhoto();
+}
+
+document.getElementById("downloadBtn").addEventListener("click", addCurrentPhotoToSession);
+
+document.getElementById("saveAllBtn").addEventListener("click", async () => {
+    if (!sessionPhotos.length) return;
+
+    const button = document.getElementById("saveAllBtn");
+    const oldText = button.textContent;
+    button.disabled = true;
+    button.textContent = "Preparing photos…";
+
+    try {
+        const files = await Promise.all(
+            sessionPhotos.map(photo => dataUrlToFile(photo.dataUrl, photo.filename))
+        );
+
+        if (navigator.share && navigator.canShare && navigator.canShare({ files })) {
+            await navigator.share({
+                files,
+                title: "GPS Site Photos",
+                text: sessionPhotos.length + " site photos"
+            });
+            showToast("✓ Photos handed to your phone. Choose Save Images to add them to the gallery.");
+        } else {
+            // Browser fallback: download each JPG. Native gallery import depends on the browser/OS.
+            for (const photo of sessionPhotos) {
+                const link = document.createElement("a");
+                link.download = photo.filename;
+                link.href = photo.dataUrl;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                await new Promise(resolve => setTimeout(resolve, 180));
             }
-
-            const filename =
-                getPhotoFilename();
-
-            try {
-
-                const file =
-                    await dataUrlToFile(
-                        capturedImage,
-                        filename
-                    );
-
-                if (
-                    navigator.share &&
-                    navigator.canShare &&
-                    navigator.canShare({ files: [file] })
-                ) {
-
-                    await navigator.share({
-                        files: [file],
-                        title: "GPS Site Photo"
-                    });
-
-                    readyForNextPhoto();
-                    return;
-                }
-
-            }
-            catch (error) {
-
-                if (error && error.name === "AbortError") {
-                    return;
-                }
-
-                console.log(
-                    "Native photo sharing unavailable",
-                    error
-                );
-            }
-
-            fallbackDownload(filename);
-            readyForNextPhoto();
-
+            showToast("Downloaded all photos. Your browser may place them in Downloads rather than Gallery.");
         }
-    );
+    } catch (error) {
+        if (!(error && error.name === "AbortError")) {
+            console.error(error);
+            showToast("Could not save the whole session. Try again.");
+        }
+    } finally {
+        button.disabled = sessionPhotos.length === 0;
+        button.textContent = oldText;
+    }
+});
+
+document.getElementById("clearSessionBtn").addEventListener("click", async () => {
+    if (!sessionPhotos.length) return;
+    if (!confirm("Clear all photos from this session? Make sure you have saved them first.")) return;
+    sessionPhotos = [];
+    renderSession();
+    try { await clearStoredSession(); } catch (error) { console.log(error); }
+    showToast("Session cleared.");
+});
+
+loadSessionPhotos();
 
 
 /* =========================================================
@@ -2033,7 +2161,7 @@ if ("serviceWorker" in navigator) {
     async function registerAndCheckForUpdates() {
         try {
             const registration = await navigator.serviceWorker.register(
-                "./sw.js?v=3.1",
+                "./sw.js?v=4",
                 { updateViaCache: "none" }
             );
 
