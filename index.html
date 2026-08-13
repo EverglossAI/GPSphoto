@@ -484,6 +484,27 @@ canvas {
 .session-thumb { position: relative; aspect-ratio: 1 / 1; overflow: hidden; border-radius: 8px; background: #020617; border: 1px solid #334155; }
 .session-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .session-thumb span { position: absolute; right: 3px; bottom: 3px; background: rgba(0,0,0,.75); color: white; border-radius: 5px; padding: 2px 4px; font-size: 9px; font-weight: 700; }
+.session-delete {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 25px;
+    height: 25px;
+    min-height: 0;
+    padding: 0;
+    border: 1px solid rgba(255,255,255,.75);
+    border-radius: 50%;
+    background: rgba(15,23,42,.88);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 800;
+    line-height: 22px;
+    display: grid;
+    place-items: center;
+    z-index: 2;
+    box-shadow: 0 1px 5px rgba(0,0,0,.45);
+}
+.session-delete:active { transform: scale(.9); }
 .session-actions { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; }
 .session-actions button { min-height: 44px; padding: 10px 8px; }
 @media (max-width: 480px) {
@@ -509,7 +530,7 @@ canvas {
 
             <div>
                 <h1>📷 GPS Site Photo</h1>
-                <small>Site inspection camera · v4</small>
+                <small>Site inspection camera · v4.1</small>
                 <div id="networkBadge" class="network-badge">● Checking connection</div>
             </div>
 
@@ -1893,6 +1914,35 @@ async function clearStoredSession() {
     db.close();
 }
 
+async function deleteStoredSessionPhoto(id) {
+    const db = await openSessionDB();
+    await new Promise((resolve, reject) => {
+        const tx = db.transaction(SESSION_STORE, "readwrite");
+        tx.objectStore(SESSION_STORE).delete(id);
+        tx.oncomplete = resolve;
+        tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+}
+
+async function deleteSessionPhoto(id) {
+    const photo = sessionPhotos.find(item => item.id === id);
+    if (!photo) return;
+
+    if (!confirm("Remove photo " + photo.number + " from this session?")) return;
+
+    sessionPhotos = sessionPhotos.filter(item => item.id !== id);
+    renderSession();
+
+    try {
+        await deleteStoredSessionPhoto(id);
+        showToast("Photo " + photo.number + " removed.");
+    } catch (error) {
+        console.error(error);
+        showToast("Photo removed here, but local storage could not be updated.");
+    }
+}
+
 function renderSession() {
     const grid = document.getElementById("sessionGrid");
     const count = document.getElementById("sessionCount");
@@ -1915,7 +1965,19 @@ function renderSession() {
         img.src = photo.dataUrl;
         const tag = document.createElement("span");
         tag.textContent = photo.number;
-        item.append(img, tag);
+
+        const removeBtn = document.createElement("button");
+        removeBtn.className = "session-delete";
+        removeBtn.type = "button";
+        removeBtn.textContent = "×";
+        removeBtn.setAttribute("aria-label", "Remove photo " + photo.number);
+        removeBtn.title = "Remove photo " + photo.number;
+        removeBtn.addEventListener("click", event => {
+            event.stopPropagation();
+            deleteSessionPhoto(photo.id);
+        });
+
+        item.append(img, tag, removeBtn);
         grid.appendChild(item);
     });
 }
