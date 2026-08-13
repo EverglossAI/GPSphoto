@@ -6,6 +6,10 @@
       content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
 <meta name="theme-color" content="#0f172a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GPS Site Photo">
+<link rel="manifest" href="./manifest.webmanifest">
 
 <title>GPS Site Photo</title>
 
@@ -248,6 +252,96 @@ canvas {
     font-size: 14px;
 }
 
+
+/* COLLAPSIBLE JOB DETAILS */
+.details-panel {
+    margin: 10px 12px 12px;
+    border: 1px solid #1e293b;
+    border-radius: 14px;
+    background: #0f172a;
+    overflow: hidden;
+}
+
+.details-panel summary {
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 13px 14px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 14px;
+    font-weight: 700;
+    color: #e2e8f0;
+}
+
+.details-panel summary::-webkit-details-marker {
+    display: none;
+}
+
+.details-panel summary::after {
+    content: "⌄";
+    color: #94a3b8;
+    font-size: 18px;
+    transition: transform 0.18s ease;
+}
+
+.details-panel[open] summary::after {
+    transform: rotate(180deg);
+}
+
+.details-summary-text {
+    min-width: 0;
+}
+
+.details-summary-text small {
+    display: block;
+    margin-top: 2px;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.details-panel .form {
+    border-top: 1px solid #1e293b;
+    padding-top: 12px;
+}
+
+.network-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 5px;
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: #1e293b;
+    color: #94a3b8;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.network-badge.online { color: #86efac; }
+.network-badge.offline { color: #fde68a; }
+
+.save-hint {
+    margin: -4px 12px 8px;
+    text-align: center;
+    color: #64748b;
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+@media (max-width: 480px) {
+    .header { padding-left: 13px; padding-right: 13px; }
+    .header h1 { font-size: 19px; }
+    .buttons { gap: 8px; }
+    button { font-size: 14px; }
+}
+
 </style>
 </head>
 
@@ -265,6 +359,7 @@ canvas {
             <div>
                 <h1>📷 GPS Site Photo</h1>
                 <small>Site inspection camera</small>
+                <div id="networkBadge" class="network-badge">● Checking connection</div>
             </div>
 
             <span class="photo-number">
@@ -276,14 +371,23 @@ canvas {
     </div>
 
 
-    <!-- FORM -->
+    <!-- COLLAPSIBLE JOB DETAILS -->
 
-    <div class="form">
+    <details class="details-panel" id="jobDetails">
+        <summary>
+            <span class="details-summary-text">
+                Job details
+                <small id="detailsSummary">Evergloss Pte Ltd · Add project / site</small>
+            </span>
+        </summary>
+
+        <div class="form">
 
         <div class="field">
             <label>Company</label>
             <input
                 id="company"
+                value="Evergloss Pte Ltd"
                 placeholder="Your company name">
         </div>
 
@@ -335,7 +439,8 @@ canvas {
 
         </div>
 
-    </div>
+        </div>
+    </details>
 
 
     <!-- CAMERA -->
@@ -411,11 +516,13 @@ canvas {
                 id="downloadBtn"
                 class="blue">
 
-                💾 SAVE PHOTO
+                💾 SAVE / SHARE
 
             </button>
 
         </div>
+
+        <div class="save-hint">On supported phones, use the share sheet to save the image to Photos/Gallery.</div>
 
     </div>
 
@@ -515,7 +622,7 @@ function saveSettings() {
 function loadSettings() {
 
     document.getElementById("company").value =
-        localStorage.getItem("gpsphoto_company") || "";
+        localStorage.getItem("gpsphoto_company") || "Evergloss Pte Ltd";
 
     document.getElementById("project").value =
         localStorage.getItem("gpsphoto_project") || "";
@@ -526,17 +633,52 @@ function loadSettings() {
 }
 
 
+function updateDetailsSummary() {
+
+    const company =
+        document.getElementById("company").value.trim() ||
+        "Evergloss Pte Ltd";
+
+    const project =
+        document.getElementById("project").value.trim();
+
+    const site =
+        document.getElementById("site").value.trim();
+
+    const parts = [company];
+
+    if (project) parts.push(project);
+    if (site) parts.push(site);
+
+    if (!project && !site) {
+        parts.push("Add project / site");
+    }
+
+    document.getElementById("detailsSummary").textContent =
+        parts.join(" · ");
+}
+
+
 document
     .getElementById("company")
-    .addEventListener("input", saveSettings);
+    .addEventListener("input", () => {
+        saveSettings();
+        updateDetailsSummary();
+    });
 
 document
     .getElementById("project")
-    .addEventListener("input", saveSettings);
+    .addEventListener("input", () => {
+        saveSettings();
+        updateDetailsSummary();
+    });
 
 document
     .getElementById("site")
-    .addEventListener("input", saveSettings);
+    .addEventListener("input", () => {
+        saveSettings();
+        updateDetailsSummary();
+    });
 
 
 /* =========================================================
@@ -1515,93 +1657,156 @@ document
 
 
 /* =========================================================
-   DOWNLOAD
+   SAVE / SHARE PHOTO
    ========================================================= */
+
+function getPhotoFilename() {
+
+    const project =
+        document
+            .getElementById("project")
+            .value
+            .trim()
+            .replace(/[^a-z0-9-_]/gi, "_");
+
+    const number =
+        photoCounter.textContent;
+
+    const date =
+        new Date()
+            .toISOString()
+            .replace(/[:.]/g, "-");
+
+    return (
+        (project || "SITE_PHOTO") +
+        "_" +
+        number +
+        "_" +
+        date +
+        ".jpg"
+    );
+}
+
+async function dataUrlToFile(dataUrl, filename) {
+
+    const response = await fetch(dataUrl);
+    const blob = await response.blob();
+
+    return new File(
+        [blob],
+        filename,
+        { type: "image/jpeg" }
+    );
+}
+
+function fallbackDownload(filename) {
+
+    const link =
+        document.createElement("a");
+
+    link.download = filename;
+    link.href = capturedImage;
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
 
 document
     .getElementById("downloadBtn")
     .addEventListener(
         "click",
-        () => {
+        async () => {
 
             if (!capturedImage) {
-
                 return;
-
             }
 
-
-            const project =
-                document
-                    .getElementById(
-                        "project"
-                    )
-                    .value
-                    .trim()
-                    .replace(
-                        /[^a-z0-9-_]/gi,
-                        "_"
-                    );
-
-
-            const number =
-                photoCounter
-                    .textContent;
-
-
-            const date =
-                new Date()
-                    .toISOString()
-                    .replace(
-                        /[:.]/g,
-                        "-"
-                    );
-
-
             const filename =
+                getPhotoFilename();
 
-                (project ||
-                "SITE_PHOTO") +
+            try {
 
-                "_" +
+                const file =
+                    await dataUrlToFile(
+                        capturedImage,
+                        filename
+                    );
 
-                number +
+                if (
+                    navigator.share &&
+                    navigator.canShare &&
+                    navigator.canShare({ files: [file] })
+                ) {
 
-                "_" +
+                    await navigator.share({
+                        files: [file],
+                        title: "GPS Site Photo"
+                    });
 
-                date +
+                    return;
+                }
 
-                ".jpg";
+            }
+            catch (error) {
 
+                if (error && error.name === "AbortError") {
+                    return;
+                }
 
-            const link =
-                document.createElement(
-                    "a"
+                console.log(
+                    "Native photo sharing unavailable",
+                    error
                 );
+            }
 
-
-            link.download =
-                filename;
-
-
-            link.href =
-                capturedImage;
-
-
-            document.body.appendChild(
-                link
-            );
-
-
-            link.click();
-
-
-            document.body.removeChild(
-                link
-            );
+            fallbackDownload(filename);
 
         }
     );
+
+
+/* =========================================================
+   OFFLINE / CONNECTION STATUS
+   ========================================================= */
+
+function updateNetworkBadge() {
+
+    const badge =
+        document.getElementById("networkBadge");
+
+    if (navigator.onLine) {
+        badge.className = "network-badge online";
+        badge.textContent = "● Online";
+    }
+    else {
+        badge.className = "network-badge offline";
+        badge.textContent = "● Offline mode";
+    }
+}
+
+window.addEventListener("online", () => {
+    updateNetworkBadge();
+    getGPS();
+});
+
+window.addEventListener("offline", updateNetworkBadge);
+
+if ("serviceWorker" in navigator) {
+
+    window.addEventListener("load", () => {
+
+        navigator.serviceWorker
+            .register("./sw.js")
+            .catch(error => {
+                console.log(
+                    "Service worker registration failed",
+                    error
+                );
+            });
+
+    });
+}
 
 
 /* =========================================================
@@ -1609,6 +1814,8 @@ document
    ========================================================= */
 
 loadSettings();
+updateDetailsSummary();
+updateNetworkBadge();
 
 startCamera();
 

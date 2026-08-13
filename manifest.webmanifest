@@ -1,0 +1,10 @@
+{
+  "name": "GPS Site Photo",
+  "short_name": "GPS Photo",
+  "description": "Offline-capable GPS site inspection camera",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#0f172a"
+}
