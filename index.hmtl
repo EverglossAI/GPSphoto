@@ -2,675 +2,1619 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#111827">
-<title>Site Photo GPS Camera</title>
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+
+<meta name="theme-color" content="#0f172a">
+
+<title>GPS Site Photo</title>
 
 <style>
+
 * {
-  box-sizing: border-box;
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    background: #020617;
+    color: #f8fafc;
+    font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Arial,
+        sans-serif;
 }
 
 body {
-  margin: 0;
-  background: #111827;
-  color: white;
-  font-family: Arial, Helvetica, sans-serif;
+    min-height: 100vh;
 }
 
 .app {
-  max-width: 650px;
-  margin: auto;
-  min-height: 100vh;
-  padding-bottom: 30px;
+    width: 100%;
+    max-width: 720px;
+    margin: auto;
+    padding-bottom: 30px;
 }
 
-header {
-  padding: 16px;
-  background: #1f2937;
-  text-align: center;
+/* HEADER */
+
+.header {
+    background: #0f172a;
+    padding:
+        max(14px, env(safe-area-inset-top))
+        16px
+        14px
+        16px;
+
+    border-bottom: 1px solid #1e293b;
 }
 
-header h1 {
-  margin: 0;
-  font-size: 20px;
+.header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
+
+.header h1 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.header small {
+    color: #94a3b8;
+}
+
+/* FORM */
 
 .form {
-  padding: 12px;
-  background: #111827;
+    padding: 12px;
+    background: #020617;
+}
+
+.field {
+    margin-bottom: 10px;
 }
 
 label {
-  display: block;
-  font-size: 13px;
-  color: #cbd5e1;
-  margin: 8px 0 4px;
+    display: block;
+    margin-bottom: 5px;
+    color: #cbd5e1;
+    font-size: 13px;
+    font-weight: 600;
 }
 
-input, textarea {
-  width: 100%;
-  padding: 11px;
-  border-radius: 8px;
-  border: 1px solid #475569;
-  background: #1e293b;
-  color: white;
-  font-size: 16px;
+input,
+textarea {
+    width: 100%;
+    border: 1px solid #334155;
+    border-radius: 9px;
+    background: #0f172a;
+    color: white;
+    padding: 11px 12px;
+    font-size: 16px;
+    outline: none;
+}
+
+input:focus,
+textarea:focus {
+    border-color: #38bdf8;
 }
 
 textarea {
-  min-height: 65px;
-  resize: vertical;
+    min-height: 65px;
+    resize: vertical;
 }
 
+/* CAMERA */
+
 .camera {
-  position: relative;
-  background: black;
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  overflow: hidden;
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    background: #000;
+    overflow: hidden;
 }
 
 video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
-canvas {
-  display: none;
-}
+/* GPS PANEL */
 
 .status {
-  padding: 10px 12px;
-  font-size: 13px;
-  background: #1e293b;
-  line-height: 1.5;
+    padding: 11px 13px;
+    background: #0f172a;
+    border-bottom: 1px solid #1e293b;
+    font-size: 13px;
+    line-height: 1.5;
 }
 
-.status.ok {
-  color: #86efac;
+.status-ok {
+    color: #86efac;
 }
 
-.status.warning {
-  color: #fde68a;
+.status-warning {
+    color: #fde68a;
 }
+
+.status-error {
+    color: #fca5a5;
+}
+
+/* BUTTONS */
 
 .buttons {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  padding: 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 9px;
+    padding: 12px;
 }
 
 button {
-  border: 0;
-  border-radius: 10px;
-  padding: 14px;
-  font-size: 16px;
-  font-weight: bold;
-  cursor: pointer;
+    border: 0;
+    border-radius: 10px;
+    padding: 14px 10px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    min-height: 48px;
+}
+
+button:active {
+    transform: scale(0.98);
 }
 
 .primary {
-  background: #22c55e;
-  color: #052e16;
+    background: #22c55e;
+    color: #052e16;
 }
 
-.secondary {
-  background: #334155;
-  color: white;
+.blue {
+    background: #2563eb;
+    color: white;
 }
 
-.download {
-  background: #3b82f6;
-  color: white;
+.dark {
+    background: #334155;
+    color: white;
+}
+
+.red {
+    background: #dc2626;
+    color: white;
 }
 
 button:disabled {
-  opacity: 0.4;
+    opacity: 0.4;
+    cursor: not-allowed;
 }
 
+/* PREVIEW */
+
 .preview {
-  display: none;
-  padding: 12px;
+    display: none;
+    padding: 12px;
 }
 
 .preview img {
-  width: 100%;
-  border-radius: 8px;
+    width: 100%;
+    display: block;
+    border-radius: 10px;
+    border: 1px solid #334155;
 }
 
-.info {
-  padding: 12px;
-  font-size: 12px;
-  color: #94a3b8;
-  text-align: center;
+/* LOGO */
+
+.logo-preview {
+    max-height: 70px;
+    max-width: 180px;
+    margin-top: 8px;
+    display: none;
 }
 
-.small {
-  font-size: 12px;
-  color: #94a3b8;
-  margin-top: 5px;
+/* PHOTO NUMBER */
+
+.photo-number {
+    display: inline-block;
+    background: #1e293b;
+    padding: 5px 8px;
+    border-radius: 6px;
+    color: #94a3b8;
+    font-size: 12px;
 }
+
+/* FOOTER */
+
+.footer {
+    padding: 10px 15px;
+    text-align: center;
+    color: #64748b;
+    font-size: 11px;
+}
+
+/* HIDDEN */
+
+canvas {
+    display: none;
+}
+
+#logoFile {
+    font-size: 14px;
+}
+
 </style>
 </head>
+
 
 <body>
 
 <div class="app">
 
-<header>
-  <h1>📷 Site Photo GPS Camera</h1>
-</header>
+    <!-- HEADER -->
 
-<div class="form">
+    <div class="header">
 
-  <label>Project</label>
-  <input id="project" placeholder="e.g. ABC Project">
+        <div class="header-row">
 
-  <label>Site / Location</label>
-  <input id="site" placeholder="e.g. Jurong Site">
+            <div>
+                <h1>📷 GPS Site Photo</h1>
+                <small>Site inspection camera</small>
+            </div>
 
-  <label>Notes</label>
-  <textarea id="notes" placeholder="e.g. Pump installation, piping inspection..."></textarea>
+            <span class="photo-number">
+                Photo <span id="photoCounter">001</span>
+            </span>
+
+        </div>
+
+    </div>
+
+
+    <!-- FORM -->
+
+    <div class="form">
+
+        <div class="field">
+            <label>Company</label>
+            <input
+                id="company"
+                placeholder="Your company name">
+        </div>
+
+
+        <div class="field">
+            <label>Project</label>
+            <input
+                id="project"
+                placeholder="Project name / number">
+        </div>
+
+
+        <div class="field">
+            <label>Site / Location</label>
+            <input
+                id="site"
+                placeholder="Site name">
+        </div>
+
+
+        <div class="field">
+
+            <label>
+                Company Logo
+                <small style="font-weight:normal;color:#64748b">
+                    (optional)
+                </small>
+            </label>
+
+            <input
+                id="logoFile"
+                type="file"
+                accept="image/*">
+
+            <img
+                id="logoPreview"
+                class="logo-preview">
+
+        </div>
+
+
+        <div class="field">
+
+            <label>Notes</label>
+
+            <textarea
+                id="notes"
+                placeholder="Inspection notes, equipment number, work description..."></textarea>
+
+        </div>
+
+    </div>
+
+
+    <!-- CAMERA -->
+
+    <div class="camera">
+
+        <video
+            id="video"
+            autoplay
+            playsinline>
+        </video>
+
+    </div>
+
+
+    <!-- GPS STATUS -->
+
+    <div
+        id="status"
+        class="status status-warning">
+
+        📍 Getting GPS location...
+
+    </div>
+
+
+    <!-- CAMERA BUTTONS -->
+
+    <div class="buttons">
+
+        <button
+            id="captureBtn"
+            class="primary">
+
+            📷 TAKE PHOTO
+
+        </button>
+
+
+        <button
+            id="switchBtn"
+            class="dark">
+
+            🔄 SWITCH CAMERA
+
+        </button>
+
+    </div>
+
+
+    <!-- PREVIEW -->
+
+    <div
+        id="preview"
+        class="preview">
+
+        <img
+            id="previewImage">
+
+
+        <div class="buttons">
+
+            <button
+                id="retakeBtn"
+                class="dark">
+
+                ↩ RETAKE
+
+            </button>
+
+
+            <button
+                id="downloadBtn"
+                class="blue">
+
+                💾 SAVE PHOTO
+
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <canvas id="canvas"></canvas>
+
+
+    <div class="footer">
+
+        GPS, date/time and inspection information are
+        permanently embedded into the saved photograph.
+
+        <br><br>
+
+        Photos are processed locally on your device.
+
+    </div>
 
 </div>
 
-<div class="camera">
-  <video id="video" autoplay playsinline></video>
-</div>
-
-<div id="status" class="status warning">
-  📍 Getting GPS location...
-</div>
-
-<div class="buttons">
-  <button id="captureBtn" class="primary">
-    📷 TAKE PHOTO
-  </button>
-
-  <button id="switchBtn" class="secondary">
-    🔄 SWITCH CAMERA
-  </button>
-</div>
-
-<div id="preview" class="preview">
-  <img id="previewImage">
-
-  <div class="buttons">
-    <button id="retakeBtn" class="secondary">
-      ↩ RETAKE
-    </button>
-
-    <button id="downloadBtn" class="download">
-      💾 SAVE PHOTO
-    </button>
-  </div>
-</div>
-
-<canvas id="canvas"></canvas>
-
-<div class="info">
-  GPS and timestamp are permanently embedded into the saved photo.<br>
-  Photos are processed locally on your device.
-</div>
-
-</div>
 
 <script>
 
+/* =========================================================
+   GPS SITE PHOTO CAMERA
+   ========================================================= */
+
+
+/* -------------------------
+   VARIABLES
+------------------------- */
+
 let stream = null;
-let currentFacingMode = "environment";
+
+let facingMode = "environment";
 
 let latitude = null;
 let longitude = null;
-let accuracy = null;
-let address = "Location unavailable";
+let gpsAccuracy = null;
 
-const video = document.getElementById("video");
-const canvas = document.getElementById("canvas");
-const statusBox = document.getElementById("status");
-const preview = document.getElementById("preview");
-const previewImage = document.getElementById("previewImage");
+let address = "";
+
+let compassHeading = null;
+
+let capturedImage = null;
+
+let logoImage = null;
 
 
-// -----------------------------
-// CAMERA
-// -----------------------------
+/* -------------------------
+   ELEMENTS
+------------------------- */
+
+const video =
+    document.getElementById("video");
+
+const canvas =
+    document.getElementById("canvas");
+
+const status =
+    document.getElementById("status");
+
+const preview =
+    document.getElementById("preview");
+
+const previewImage =
+    document.getElementById("previewImage");
+
+const photoCounter =
+    document.getElementById("photoCounter");
+
+
+/* =========================================================
+   SETTINGS STORAGE
+   ========================================================= */
+
+function saveSettings() {
+
+    localStorage.setItem(
+        "gpsphoto_company",
+        document.getElementById("company").value
+    );
+
+    localStorage.setItem(
+        "gpsphoto_project",
+        document.getElementById("project").value
+    );
+
+    localStorage.setItem(
+        "gpsphoto_site",
+        document.getElementById("site").value
+    );
+
+}
+
+
+function loadSettings() {
+
+    document.getElementById("company").value =
+        localStorage.getItem("gpsphoto_company") || "";
+
+    document.getElementById("project").value =
+        localStorage.getItem("gpsphoto_project") || "";
+
+    document.getElementById("site").value =
+        localStorage.getItem("gpsphoto_site") || "";
+
+}
+
+
+document
+    .getElementById("company")
+    .addEventListener("input", saveSettings);
+
+document
+    .getElementById("project")
+    .addEventListener("input", saveSettings);
+
+document
+    .getElementById("site")
+    .addEventListener("input", saveSettings);
+
+
+/* =========================================================
+   PHOTO NUMBER
+   ========================================================= */
+
+function getPhotoNumber() {
+
+    let number =
+        parseInt(
+            localStorage.getItem("gpsphoto_number") || "0",
+            10
+        );
+
+    number++;
+
+    localStorage.setItem(
+        "gpsphoto_number",
+        number
+    );
+
+    return number;
+
+}
+
+
+function formatPhotoNumber(number) {
+
+    return String(number)
+        .padStart(3, "0");
+
+}
+
+
+/* =========================================================
+   CAMERA
+   ========================================================= */
 
 async function startCamera() {
 
-  if (stream) {
-    stream.getTracks().forEach(track => track.stop());
-  }
+    if (stream) {
 
-  try {
+        stream
+            .getTracks()
+            .forEach(track => track.stop());
 
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: {
-          ideal: currentFacingMode
-        },
-        width: {
-          ideal: 1920
-        },
-        height: {
-          ideal: 1080
-        }
-      },
-      audio: false
-    });
+    }
 
-    video.srcObject = stream;
 
-  } catch (error) {
+    try {
 
-    alert(
-      "Unable to access the camera.\n\n" +
-      "Please make sure camera permission is enabled."
-    );
+        stream =
+            await navigator.mediaDevices
+                .getUserMedia({
 
-    console.error(error);
-  }
+                    video: {
+
+                        facingMode: {
+                            ideal: facingMode
+                        },
+
+                        width: {
+                            ideal: 1920
+                        },
+
+                        height: {
+                            ideal: 1080
+                        }
+
+                    },
+
+                    audio: false
+
+                });
+
+
+        video.srcObject = stream;
+
+    }
+
+    catch (error) {
+
+        status.className =
+            "status status-error";
+
+        status.innerHTML =
+            "❌ Camera unavailable.<br>" +
+            "Please allow camera permission.";
+
+        console.error(error);
+
+    }
+
 }
 
 
-// -----------------------------
-// SWITCH CAMERA
-// -----------------------------
+/* =========================================================
+   SWITCH CAMERA
+   ========================================================= */
 
-document.getElementById("switchBtn").addEventListener("click", () => {
+document
+    .getElementById("switchBtn")
+    .addEventListener(
+        "click",
+        () => {
 
-  currentFacingMode =
-    currentFacingMode === "environment"
-      ? "user"
-      : "environment";
+            facingMode =
+                facingMode === "environment"
+                    ? "user"
+                    : "environment";
 
-  startCamera();
+            startCamera();
 
-});
+        }
+    );
 
 
-// -----------------------------
-// GPS
-// -----------------------------
+/* =========================================================
+   GPS
+   ========================================================= */
 
 function getGPS() {
 
-  if (!navigator.geolocation) {
+    if (!navigator.geolocation) {
 
-    statusBox.innerHTML =
-      "⚠️ GPS is not supported by this browser.";
+        status.className =
+            "status status-error";
 
-    return;
-  }
+        status.innerHTML =
+            "❌ GPS is not supported.";
 
-  navigator.geolocation.getCurrentPosition(
+        return;
 
-    async position => {
+    }
 
-      latitude = position.coords.latitude;
-      longitude = position.coords.longitude;
-      accuracy = position.coords.accuracy;
 
-      statusBox.className = "status ok";
+    status.className =
+        "status status-warning";
 
-      statusBox.innerHTML =
-        "📍 GPS OK<br>" +
+    status.innerHTML =
+        "📍 Getting high-accuracy GPS...";
+
+
+    navigator.geolocation.getCurrentPosition(
+
+        position => {
+
+            latitude =
+                position.coords.latitude;
+
+            longitude =
+                position.coords.longitude;
+
+            gpsAccuracy =
+                position.coords.accuracy;
+
+
+            updateStatus();
+
+
+            reverseGeocode(
+                latitude,
+                longitude
+            );
+
+        },
+
+
+        error => {
+
+            latitude = null;
+            longitude = null;
+            gpsAccuracy = null;
+
+            status.className =
+                "status status-warning";
+
+            status.innerHTML =
+                "⚠️ GPS unavailable.<br>" +
+                "Make sure Location Services are enabled.";
+
+            console.error(error);
+
+        },
+
+
+        {
+
+            enableHighAccuracy: true,
+
+            timeout: 20000,
+
+            maximumAge: 5000
+
+        }
+
+    );
+
+}
+
+
+/* =========================================================
+   GPS STATUS
+   ========================================================= */
+
+function updateStatus() {
+
+    if (latitude === null) {
+
+        return;
+
+    }
+
+
+    status.className =
+        "status status-ok";
+
+
+    status.innerHTML =
+
+        "📍 GPS: " +
+
         latitude.toFixed(6) +
+
         ", " +
+
         longitude.toFixed(6) +
-        " &nbsp; ±" +
-        Math.round(accuracy) +
-        " m";
 
-      getAddress(latitude, longitude);
+        "<br>" +
 
-    },
+        "🎯 Accuracy: ±" +
 
-    error => {
+        Math.round(gpsAccuracy) +
 
-      statusBox.className = "status warning";
+        " m" +
 
-      statusBox.innerHTML =
-        "⚠️ GPS unavailable. Please enable Location Services.";
+        "<br>" +
 
-      console.error(error);
+        "🧭 Heading: " +
 
-    },
+        (
+            compassHeading !== null
+                ? Math.round(compassHeading) + "°"
+                : "Not available"
+        );
 
-    {
-      enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 5000
+}
+
+
+/* =========================================================
+   ADDRESS LOOKUP
+   ========================================================= */
+
+async function reverseGeocode(
+    lat,
+    lon
+) {
+
+    try {
+
+        const url =
+
+            "https://nominatim.openstreetmap.org/reverse" +
+
+            "?format=jsonv2" +
+
+            "&lat=" +
+            encodeURIComponent(lat) +
+
+            "&lon=" +
+            encodeURIComponent(lon);
+
+
+        const response =
+            await fetch(url);
+
+
+        if (!response.ok) {
+
+            return;
+
+        }
+
+
+        const data =
+            await response.json();
+
+
+        if (data.display_name) {
+
+            address =
+                data.display_name;
+
+        }
+
+
     }
 
-  );
-}
+    catch (error) {
 
+        console.log(
+            "Address lookup unavailable",
+            error
+        );
 
-// -----------------------------
-// ADDRESS
-// -----------------------------
-
-async function getAddress(lat, lon) {
-
-  try {
-
-    const url =
-      "https://nominatim.openstreetmap.org/reverse" +
-      "?format=jsonv2" +
-      "&lat=" + encodeURIComponent(lat) +
-      "&lon=" + encodeURIComponent(lon);
-
-    const response = await fetch(url, {
-      headers: {
-        "Accept": "application/json"
-      }
-    });
-
-    if (!response.ok) return;
-
-    const data = await response.json();
-
-    if (data.display_name) {
-      address = data.display_name;
     }
 
-  } catch (error) {
-
-    console.log("Address lookup failed:", error);
-
-  }
 }
 
 
-// -----------------------------
-// DATE / TIME
-// -----------------------------
+/* =========================================================
+   COMPASS
+   ========================================================= */
 
-function getTimestamp() {
+function startCompass() {
 
-  const now = new Date();
+    if (
+        typeof DeviceOrientationEvent ===
+        "undefined"
+    ) {
 
-  const day =
-    String(now.getDate()).padStart(2, "0");
+        return;
 
-  const monthNames = [
-    "Jan", "Feb", "Mar", "Apr",
-    "May", "Jun", "Jul", "Aug",
-    "Sep", "Oct", "Nov", "Dec"
-  ];
+    }
 
-  const month =
-    monthNames[now.getMonth()];
 
-  const year =
-    now.getFullYear();
+    window.addEventListener(
+        "deviceorientation",
+        event => {
 
-  const hours =
-    String(now.getHours()).padStart(2, "0");
+            let heading = null;
 
-  const minutes =
-    String(now.getMinutes()).padStart(2, "0");
 
-  const seconds =
-    String(now.getSeconds()).padStart(2, "0");
+            if (
+                typeof event.webkitCompassHeading ===
+                "number"
+            ) {
 
-  return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}`;
+                heading =
+                    event.webkitCompassHeading;
+
+            }
+
+            else if (
+                typeof event.alpha ===
+                "number"
+            ) {
+
+                heading =
+                    360 - event.alpha;
+
+            }
+
+
+            if (heading !== null) {
+
+                compassHeading =
+                    (heading + 360) % 360;
+
+                updateStatus();
+
+            }
+
+        },
+        true
+    );
+
 }
 
 
-// -----------------------------
-// TAKE PHOTO
-// -----------------------------
+/* =========================================================
+   DATE / TIME
+   ========================================================= */
 
-document.getElementById("captureBtn")
-  .addEventListener("click", capturePhoto);
+function getDateTime() {
+
+    const now =
+        new Date();
+
+
+    const day =
+        String(
+            now.getDate()
+        ).padStart(2, "0");
+
+
+    const months = [
+
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec"
+
+    ];
+
+
+    const month =
+        months[now.getMonth()];
+
+
+    const year =
+        now.getFullYear();
+
+
+    const hours =
+        String(
+            now.getHours()
+        ).padStart(2, "0");
+
+
+    const minutes =
+        String(
+            now.getMinutes()
+        ).padStart(2, "0");
+
+
+    const seconds =
+        String(
+            now.getSeconds()
+        ).padStart(2, "0");
+
+
+    return (
+
+        day +
+        "-" +
+        month +
+        "-" +
+        year +
+        " " +
+        hours +
+        ":" +
+        minutes +
+        ":" +
+        seconds
+
+    );
+
+}
+
+
+/* =========================================================
+   LOGO
+   ========================================================= */
+
+document
+    .getElementById("logoFile")
+    .addEventListener(
+        "change",
+        function() {
+
+            const file =
+                this.files[0];
+
+            if (!file) {
+
+                return;
+
+            }
+
+
+            const reader =
+                new FileReader();
+
+
+            reader.onload =
+                function(event) {
+
+                    logoImage =
+                        new Image();
+
+                    logoImage.onload =
+                        function() {
+
+                            document
+                                .getElementById(
+                                    "logoPreview"
+                                )
+                                .src =
+                                event.target.result;
+
+                            document
+                                .getElementById(
+                                    "logoPreview"
+                                )
+                                .style.display =
+                                "block";
+
+                        };
+
+
+                    logoImage.src =
+                        event.target.result;
+
+                };
+
+
+            reader.readAsDataURL(file);
+
+        }
+    );
+
+
+/* =========================================================
+   CAPTURE PHOTO
+   ========================================================= */
+
+document
+    .getElementById("captureBtn")
+    .addEventListener(
+        "click",
+        capturePhoto
+    );
 
 
 function capturePhoto() {
 
-  if (!video.videoWidth) {
+    if (!video.videoWidth) {
 
-    alert("Camera is not ready yet.");
+        alert(
+            "Camera is not ready yet."
+        );
 
-    return;
-  }
+        return;
 
-  const project =
-    document.getElementById("project").value.trim();
-
-  const site =
-    document.getElementById("site").value.trim();
-
-  const notes =
-    document.getElementById("notes").value.trim();
-
-  const timestamp =
-    getTimestamp();
+    }
 
 
-  // Use actual camera resolution
-
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-
-  const ctx =
-    canvas.getContext("2d");
-
-  ctx.drawImage(
-    video,
-    0,
-    0,
-    canvas.width,
-    canvas.height
-  );
+    saveSettings();
 
 
-  // -----------------------------
-  // STAMP
-  // -----------------------------
-
-  const scale =
-    canvas.width / 1000;
-
-  const padding =
-    25 * scale;
-
-  const lineHeight =
-    30 * scale;
-
-  const fontSize =
-    21 * scale;
+    const photoNumber =
+        getPhotoNumber();
 
 
-  // Calculate stamp height
-
-  let lines = [];
-
-  if (project)
-    lines.push("PROJECT: " + project);
-
-  if (site)
-    lines.push("SITE: " + site);
-
-  lines.push("GPS: " +
-    (latitude !== null
-      ? latitude.toFixed(6) +
-        ", " +
-        longitude.toFixed(6)
-      : "Unavailable")
-  );
-
-  lines.push(
-    "GPS ACCURACY: " +
-    (accuracy !== null
-      ? "±" + Math.round(accuracy) + " m"
-      : "Unavailable")
-  );
-
-  lines.push("DATE/TIME: " + timestamp);
-
-  if (address !== "Location unavailable") {
-
-    let shortAddress =
-      address.length > 90
-        ? address.substring(0, 90) + "..."
-        : address;
-
-    lines.push("LOCATION: " + shortAddress);
-  }
-
-  if (notes)
-    lines.push("NOTES: " + notes);
+    photoCounter.textContent =
+        formatPhotoNumber(photoNumber);
 
 
-  const boxHeight =
-    padding * 2 +
-    lines.length * lineHeight;
+    const project =
+        document
+            .getElementById("project")
+            .value
+            .trim();
 
 
-  // Black transparent background
-
-  ctx.fillStyle =
-    "rgba(0,0,0,0.78)";
-
-  ctx.fillRect(
-    0,
-    canvas.height - boxHeight,
-    canvas.width,
-    boxHeight
-  );
+    const site =
+        document
+            .getElementById("site")
+            .value
+            .trim();
 
 
-  // Text
-
-  ctx.fillStyle = "white";
-
-  ctx.font =
-    "600 " +
-    fontSize +
-    "px Arial";
-
-  ctx.textBaseline =
-    "top";
+    const company =
+        document
+            .getElementById("company")
+            .value
+            .trim();
 
 
-  lines.forEach((line, index) => {
-
-    ctx.fillText(
-      line,
-      padding,
-      canvas.height -
-      boxHeight +
-      padding +
-      index * lineHeight
-    );
-
-  });
+    const notes =
+        document
+            .getElementById("notes")
+            .value
+            .trim();
 
 
-  // Small GPS indicator
-
-  ctx.fillStyle =
-    "#22c55e";
-
-  ctx.beginPath();
-
-  ctx.arc(
-    canvas.width - padding,
-    padding,
-    8 * scale,
-    0,
-    Math.PI * 2
-  );
-
-  ctx.fill();
+    const dateTime =
+        getDateTime();
 
 
-  // Convert to JPEG
+    /* Camera image */
 
-  const imageData =
-    canvas.toDataURL(
-      "image/jpeg",
-      0.92
+    canvas.width =
+        video.videoWidth;
+
+    canvas.height =
+        video.videoHeight;
+
+
+    const ctx =
+        canvas.getContext(
+            "2d"
+        );
+
+
+    ctx.drawImage(
+        video,
+        0,
+        0,
+        canvas.width,
+        canvas.height
     );
 
 
-  previewImage.src =
-    imageData;
+    /* =====================================================
+       STAMP
+       ===================================================== */
 
-  preview.style.display =
-    "block";
+    const scale =
+        canvas.width / 1200;
 
-  preview.scrollIntoView({
-    behavior: "smooth"
-  });
+
+    const padding =
+        Math.round(
+            24 * scale
+        );
+
+
+    const fontSize =
+        Math.round(
+            22 * scale
+        );
+
+
+    const lineHeight =
+        Math.round(
+            31 * scale
+        );
+
+
+    let lines = [];
+
+
+    if (company)
+        lines.push(
+            "COMPANY: " +
+            company
+        );
+
+
+    if (project)
+        lines.push(
+            "PROJECT: " +
+            project
+        );
+
+
+    if (site)
+        lines.push(
+            "SITE: " +
+            site
+        );
+
+
+    lines.push(
+        "PHOTO: " +
+        formatPhotoNumber(
+            photoNumber
+        )
+    );
+
+
+    if (latitude !== null) {
+
+        lines.push(
+
+            "GPS: " +
+
+            latitude.toFixed(6) +
+
+            ", " +
+
+            longitude.toFixed(6)
+
+        );
+
+
+        lines.push(
+
+            "GPS ACCURACY: ±" +
+
+            Math.round(
+                gpsAccuracy
+            ) +
+
+            " m"
+
+        );
+
+    }
+
+    else {
+
+        lines.push(
+            "GPS: UNAVAILABLE"
+        );
+
+    }
+
+
+    if (compassHeading !== null) {
+
+        lines.push(
+
+            "HEADING: " +
+
+            Math.round(
+                compassHeading
+            ) +
+
+            "°"
+
+        );
+
+    }
+
+
+    lines.push(
+        "DATE/TIME: " +
+        dateTime
+    );
+
+
+    if (address) {
+
+        let shortAddress =
+            address;
+
+
+        if (
+            shortAddress.length >
+            95
+        ) {
+
+            shortAddress =
+                shortAddress.substring(
+                    0,
+                    95
+                ) +
+                "...";
+
+        }
+
+
+        lines.push(
+            "LOCATION: " +
+            shortAddress
+        );
+
+    }
+
+
+    if (notes) {
+
+        let shortNotes =
+            notes;
+
+
+        if (
+            shortNotes.length >
+            95
+        ) {
+
+            shortNotes =
+                shortNotes.substring(
+                    0,
+                    95
+                ) +
+                "...";
+
+        }
+
+
+        lines.push(
+            "NOTES: " +
+            shortNotes
+        );
+
+    }
+
+
+    /* Stamp height */
+
+    const stampHeight =
+
+        padding * 2 +
+
+        lines.length *
+        lineHeight;
+
+
+    const stampTop =
+        canvas.height -
+        stampHeight;
+
+
+    /* Background */
+
+    ctx.fillStyle =
+        "rgba(0,0,0,0.80)";
+
+
+    ctx.fillRect(
+
+        0,
+
+        stampTop,
+
+        canvas.width,
+
+        stampHeight
+
+    );
+
+
+    /* Logo */
+
+    if (
+        logoImage &&
+        logoImage.complete
+    ) {
+
+        const maxLogoWidth =
+            160 * scale;
+
+        const maxLogoHeight =
+            55 * scale;
+
+
+        const ratio =
+            Math.min(
+
+                maxLogoWidth /
+                logoImage.width,
+
+                maxLogoHeight /
+                logoImage.height
+
+            );
+
+
+        const logoWidth =
+            logoImage.width *
+            ratio;
+
+
+        const logoHeight =
+            logoImage.height *
+            ratio;
+
+
+        ctx.drawImage(
+
+            logoImage,
+
+            canvas.width -
+            padding -
+            logoWidth,
+
+            stampTop +
+            padding,
+
+            logoWidth,
+
+            logoHeight
+
+        );
+
+    }
+
+
+    /* Text */
+
+    ctx.fillStyle =
+        "#ffffff";
+
+
+    ctx.font =
+        "600 " +
+        fontSize +
+        "px Arial";
+
+
+    ctx.textBaseline =
+        "top";
+
+
+    lines.forEach(
+        (line, index) => {
+
+            ctx.fillText(
+
+                line,
+
+                padding,
+
+                stampTop +
+                padding +
+                index *
+                lineHeight
+
+            );
+
+        }
+    );
+
+
+    /* GPS green dot */
+
+    ctx.fillStyle =
+        "#22c55e";
+
+
+    ctx.beginPath();
+
+
+    ctx.arc(
+
+        canvas.width -
+        padding,
+
+        padding,
+
+        8 * scale,
+
+        0,
+
+        Math.PI * 2
+
+    );
+
+
+    ctx.fill();
+
+
+    /* Create JPG */
+
+    capturedImage =
+        canvas.toDataURL(
+            "image/jpeg",
+            0.94
+        );
+
+
+    previewImage.src =
+        capturedImage;
+
+
+    preview.style.display =
+        "block";
+
+
+    preview.scrollIntoView({
+        behavior: "smooth"
+    });
 
 }
 
 
-// -----------------------------
-// RETAKE
-// -----------------------------
+/* =========================================================
+   RETAKE
+   ========================================================= */
 
-document.getElementById("retakeBtn")
-  .addEventListener("click", () => {
+document
+    .getElementById("retakeBtn")
+    .addEventListener(
+        "click",
+        () => {
 
-    preview.style.display = "none";
+            preview.style.display =
+                "none";
 
-    getGPS();
+            getGPS();
 
-  });
-
-
-// -----------------------------
-// DOWNLOAD
-// -----------------------------
-
-document.getElementById("downloadBtn")
-  .addEventListener("click", () => {
-
-    const project =
-      document.getElementById("project")
-        .value
-        .trim()
-        .replace(/[^a-z0-9-_]/gi, "_");
-
-    const timestamp =
-      new Date()
-        .toISOString()
-        .replace(/[:.]/g, "-");
-
-    const filename =
-      (project || "SITE_PHOTO") +
-      "_" +
-      timestamp +
-      ".jpg";
+        }
+    );
 
 
-    const link =
-      document.createElement("a");
+/* =========================================================
+   DOWNLOAD
+   ========================================================= */
 
-    link.download =
-      filename;
+document
+    .getElementById("downloadBtn")
+    .addEventListener(
+        "click",
+        () => {
 
-    link.href =
-      previewImage.src;
+            if (!capturedImage) {
 
-    link.click();
+                return;
 
-  });
+            }
 
 
-// -----------------------------
-// START
-// -----------------------------
+            const project =
+                document
+                    .getElementById(
+                        "project"
+                    )
+                    .value
+                    .trim()
+                    .replace(
+                        /[^a-z0-9-_]/gi,
+                        "_"
+                    );
+
+
+            const number =
+                photoCounter
+                    .textContent;
+
+
+            const date =
+                new Date()
+                    .toISOString()
+                    .replace(
+                        /[:.]/g,
+                        "-"
+                    );
+
+
+            const filename =
+
+                (project ||
+                "SITE_PHOTO") +
+
+                "_" +
+
+                number +
+
+                "_" +
+
+                date +
+
+                ".jpg";
+
+
+            const link =
+                document.createElement(
+                    "a"
+                );
+
+
+            link.download =
+                filename;
+
+
+            link.href =
+                capturedImage;
+
+
+            document.body.appendChild(
+                link
+            );
+
+
+            link.click();
+
+
+            document.body.removeChild(
+                link
+            );
+
+        }
+    );
+
+
+/* =========================================================
+   INITIALIZE
+   ========================================================= */
+
+loadSettings();
 
 startCamera();
+
 getGPS();
+
+startCompass();
 
 </script>
 
