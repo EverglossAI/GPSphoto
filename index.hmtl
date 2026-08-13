@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<title>Site Photo GPS Camera</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #111827;
+  color: white;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.app {
+  max-width: 650px;
+  margin: auto;
+  min-height: 100vh;
+  padding-bottom: 30px;
+}
+
+header {
+  padding: 16px;
+  background: #1f2937;
+  text-align: center;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.form {
+  padding: 12px;
+  background: #111827;
+}
+
+label {
+  display: block;
+  font-size: 13px;
+  color: #cbd5e1;
+  margin: 8px 0 4px;
+}
+
+input, textarea {
+  width: 100%;
+  padding: 11px;
+  border-radius: 8px;
+  border: 1px solid #475569;
+  background: #1e293b;
+  color: white;
+  font-size: 16px;
+}
+
+textarea {
+  min-height: 65px;
+  resize: vertical;
+}
+
+.camera {
+  position: relative;
+  background: black;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+}
+
+video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+canvas {
+  display: none;
+}
+
+.status {
+  padding: 10px 12px;
+  font-size: 13px;
+  background: #1e293b;
+  line-height: 1.5;
+}
+
+.status.ok {
+  color: #86efac;
+}
+
+.status.warning {
+  color: #fde68a;
+}
+
+.buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 12px;
+}
+
+button {
+  border: 0;
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.primary {
+  background: #22c55e;
+  color: #052e16;
+}
+
+.secondary {
+  background: #334155;
+  color: white;
+}
+
+.download {
+  background: #3b82f6;
+  color: white;
+}
+
+button:disabled {
+  opacity: 0.4;
+}
+
+.preview {
+  display: none;
+  padding: 12px;
+}
+
+.preview img {
+  width: 100%;
+  border-radius: 8px;
+}
+
+.info {
+  padding: 12px;
+  font-size: 12px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.small {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 5px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+<header>
+  <h1>📷 Site Photo GPS Camera</h1>
+</header>
+
+<div class="form">
+
+  <label>Project</label>
+  <input id="project" placeholder="e.g. ABC Project">
+
+  <label>Site / Location</label>
+  <input id="site" placeholder="e.g. Jurong Site">
+
+  <label>Notes</label>
+  <textarea id="notes" placeholder="e.g. Pump installation, piping inspection..."></textarea>
+
+</div>
+
+<div class="camera">
+  <video id="video" autoplay playsinline></video>
+</div>
+
+<div id="status" class="status warning">
+  📍 Getting GPS location...
+</div>
+
+<div class="buttons">
+  <button id="captureBtn" class="primary">
+    📷 TAKE PHOTO
+  </button>
+
+  <button id="switchBtn" class="secondary">
+    🔄 SWITCH CAMERA
+  </button>
+</div>
+
+<div id="preview" class="preview">
+  <img id="previewImage">
+
+  <div class="buttons">
+    <button id="retakeBtn" class="secondary">
+      ↩ RETAKE
+    </button>
+
+    <button id="downloadBtn" class="download">
+      💾 SAVE PHOTO
+    </button>
+  </div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<div class="info">
+  GPS and timestamp are permanently embedded into the saved photo.<br>
+  Photos are processed locally on your device.
+</div>
+
+</div>
+
+<script>
+
+let stream = null;
+let currentFacingMode = "environment";
+
+let latitude = null;
+let longitude = null;
+let accuracy = null;
+let address = "Location unavailable";
+
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const statusBox = document.getElementById("status");
+const preview = document.getElementById("preview");
+const previewImage = document.getElementById("previewImage");
+
+
+// -----------------------------
+// CAMERA
+// -----------------------------
+
+async function startCamera() {
+
+  if (stream) {
+    stream.getTracks().forEach(track => track.stop());
+  }
+
+  try {
+
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: {
+          ideal: currentFacingMode
+        },
+        width: {
+          ideal: 1920
+        },
+        height: {
+          ideal: 1080
+        }
+      },
+      audio: false
+    });
+
+    video.srcObject = stream;
+
+  } catch (error) {
+
+    alert(
+      "Unable to access the camera.\n\n" +
+      "Please make sure camera permission is enabled."
+    );
+
+    console.error(error);
+  }
+}
+
+
+// -----------------------------
+// SWITCH CAMERA
+// -----------------------------
+
+document.getElementById("switchBtn").addEventListener("click", () => {
+
+  currentFacingMode =
+    currentFacingMode === "environment"
+      ? "user"
+      : "environment";
+
+  startCamera();
+
+});
+
+
+// -----------------------------
+// GPS
+// -----------------------------
+
+function getGPS() {
+
+  if (!navigator.geolocation) {
+
+    statusBox.innerHTML =
+      "⚠️ GPS is not supported by this browser.";
+
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+
+    async position => {
+
+      latitude = position.coords.latitude;
+      longitude = position.coords.longitude;
+      accuracy = position.coords.accuracy;
+
+      statusBox.className = "status ok";
+
+      statusBox.innerHTML =
+        "📍 GPS OK<br>" +
+        latitude.toFixed(6) +
+        ", " +
+        longitude.toFixed(6) +
+        " &nbsp; ±" +
+        Math.round(accuracy) +
+        " m";
+
+      getAddress(latitude, longitude);
+
+    },
+
+    error => {
+
+      statusBox.className = "status warning";
+
+      statusBox.innerHTML =
+        "⚠️ GPS unavailable. Please enable Location Services.";
+
+      console.error(error);
+
+    },
+
+    {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 5000
+    }
+
+  );
+}
+
+
+// -----------------------------
+// ADDRESS
+// -----------------------------
+
+async function getAddress(lat, lon) {
+
+  try {
+
+    const url =
+      "https://nominatim.openstreetmap.org/reverse" +
+      "?format=jsonv2" +
+      "&lat=" + encodeURIComponent(lat) +
+      "&lon=" + encodeURIComponent(lon);
+
+    const response = await fetch(url, {
+      headers: {
+        "Accept": "application/json"
+      }
+    });
+
+    if (!response.ok) return;
+
+    const data = await response.json();
+
+    if (data.display_name) {
+      address = data.display_name;
+    }
+
+  } catch (error) {
+
+    console.log("Address lookup failed:", error);
+
+  }
+}
+
+
+// -----------------------------
+// DATE / TIME
+// -----------------------------
+
+function getTimestamp() {
+
+  const now = new Date();
+
+  const day =
+    String(now.getDate()).padStart(2, "0");
+
+  const monthNames = [
+    "Jan", "Feb", "Mar", "Apr",
+    "May", "Jun", "Jul", "Aug",
+    "Sep", "Oct", "Nov", "Dec"
+  ];
+
+  const month =
+    monthNames[now.getMonth()];
+
+  const year =
+    now.getFullYear();
+
+  const hours =
+    String(now.getHours()).padStart(2, "0");
+
+  const minutes =
+    String(now.getMinutes()).padStart(2, "0");
+
+  const seconds =
+    String(now.getSeconds()).padStart(2, "0");
+
+  return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}`;
+}
+
+
+// -----------------------------
+// TAKE PHOTO
+// -----------------------------
+
+document.getElementById("captureBtn")
+  .addEventListener("click", capturePhoto);
+
+
+function capturePhoto() {
+
+  if (!video.videoWidth) {
+
+    alert("Camera is not ready yet.");
+
+    return;
+  }
+
+  const project =
+    document.getElementById("project").value.trim();
+
+  const site =
+    document.getElementById("site").value.trim();
+
+  const notes =
+    document.getElementById("notes").value.trim();
+
+  const timestamp =
+    getTimestamp();
+
+
+  // Use actual camera resolution
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  const ctx =
+    canvas.getContext("2d");
+
+  ctx.drawImage(
+    video,
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+
+  // -----------------------------
+  // STAMP
+  // -----------------------------
+
+  const scale =
+    canvas.width / 1000;
+
+  const padding =
+    25 * scale;
+
+  const lineHeight =
+    30 * scale;
+
+  const fontSize =
+    21 * scale;
+
+
+  // Calculate stamp height
+
+  let lines = [];
+
+  if (project)
+    lines.push("PROJECT: " + project);
+
+  if (site)
+    lines.push("SITE: " + site);
+
+  lines.push("GPS: " +
+    (latitude !== null
+      ? latitude.toFixed(6) +
+        ", " +
+        longitude.toFixed(6)
+      : "Unavailable")
+  );
+
+  lines.push(
+    "GPS ACCURACY: " +
+    (accuracy !== null
+      ? "±" + Math.round(accuracy) + " m"
+      : "Unavailable")
+  );
+
+  lines.push("DATE/TIME: " + timestamp);
+
+  if (address !== "Location unavailable") {
+
+    let shortAddress =
+      address.length > 90
+        ? address.substring(0, 90) + "..."
+        : address;
+
+    lines.push("LOCATION: " + shortAddress);
+  }
+
+  if (notes)
+    lines.push("NOTES: " + notes);
+
+
+  const boxHeight =
+    padding * 2 +
+    lines.length * lineHeight;
+
+
+  // Black transparent background
+
+  ctx.fillStyle =
+    "rgba(0,0,0,0.78)";
+
+  ctx.fillRect(
+    0,
+    canvas.height - boxHeight,
+    canvas.width,
+    boxHeight
+  );
+
+
+  // Text
+
+  ctx.fillStyle = "white";
+
+  ctx.font =
+    "600 " +
+    fontSize +
+    "px Arial";
+
+  ctx.textBaseline =
+    "top";
+
+
+  lines.forEach((line, index) => {
+
+    ctx.fillText(
+      line,
+      padding,
+      canvas.height -
+      boxHeight +
+      padding +
+      index * lineHeight
+    );
+
+  });
+
+
+  // Small GPS indicator
+
+  ctx.fillStyle =
+    "#22c55e";
+
+  ctx.beginPath();
+
+  ctx.arc(
+    canvas.width - padding,
+    padding,
+    8 * scale,
+    0,
+    Math.PI * 2
+  );
+
+  ctx.fill();
+
+
+  // Convert to JPEG
+
+  const imageData =
+    canvas.toDataURL(
+      "image/jpeg",
+      0.92
+    );
+
+
+  previewImage.src =
+    imageData;
+
+  preview.style.display =
+    "block";
+
+  preview.scrollIntoView({
+    behavior: "smooth"
+  });
+
+}
+
+
+// -----------------------------
+// RETAKE
+// -----------------------------
+
+document.getElementById("retakeBtn")
+  .addEventListener("click", () => {
+
+    preview.style.display = "none";
+
+    getGPS();
+
+  });
+
+
+// -----------------------------
+// DOWNLOAD
+// -----------------------------
+
+document.getElementById("downloadBtn")
+  .addEventListener("click", () => {
+
+    const project =
+      document.getElementById("project")
+        .value
+        .trim()
+        .replace(/[^a-z0-9-_]/gi, "_");
+
+    const timestamp =
+      new Date()
+        .toISOString()
+        .replace(/[:.]/g, "-");
+
+    const filename =
+      (project || "SITE_PHOTO") +
+      "_" +
+      timestamp +
+      ".jpg";
+
+
+    const link =
+      document.createElement("a");
+
+    link.download =
+      filename;
+
+    link.href =
+      previewImage.src;
+
+    link.click();
+
+  });
+
+
+// -----------------------------
+// START
+// -----------------------------
+
+startCamera();
+getGPS();
+
+</script>
+
+</body>
+</html>
