@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="GPS Site Photo">
 <link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icon-180.png">
 
 <title>GPS Site Photo</title>
 
@@ -233,6 +234,126 @@ button:disabled {
     font-size: 12px;
 }
 
+
+/* V3 QUICK ACTIONS */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.icon-button {
+    min-width: 42px;
+    min-height: 42px;
+    padding: 8px 10px;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    background: #1e293b;
+    color: #f8fafc;
+    font-size: 18px;
+    line-height: 1;
+}
+
+.icon-button.hidden {
+    display: none;
+}
+
+.status-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.gps-quality {
+    font-weight: 800;
+}
+
+.gps-quality.excellent { color: #86efac; }
+.gps-quality.good { color: #bef264; }
+.gps-quality.fair { color: #fde68a; }
+.gps-quality.poor { color: #fca5a5; }
+
+.toast {
+    position: fixed;
+    left: 50%;
+    bottom: max(18px, env(safe-area-inset-bottom));
+    transform: translateX(-50%) translateY(20px);
+    z-index: 50;
+    width: min(calc(100% - 28px), 520px);
+    padding: 12px 14px;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.96);
+    color: #f8fafc;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+.modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    padding: 18px;
+    background: rgba(2, 6, 23, 0.78);
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-backdrop.show {
+    display: flex;
+}
+
+.install-card {
+    width: min(100%, 430px);
+    border: 1px solid #334155;
+    border-radius: 16px;
+    background: #0f172a;
+    padding: 18px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+}
+
+.install-card h2 {
+    margin: 0 0 8px;
+    font-size: 19px;
+}
+
+.install-card p {
+    margin: 0 0 14px;
+    color: #cbd5e1;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.install-steps {
+    margin: 0 0 16px;
+    padding-left: 22px;
+    color: #e2e8f0;
+    font-size: 14px;
+    line-height: 1.65;
+}
+
+.full-button {
+    width: 100%;
+}
+
+.quick-ready {
+    padding: 0 12px 10px;
+    color: #94a3b8;
+    font-size: 11px;
+    text-align: center;
+}
+
 /* FOOTER */
 
 .footer {
@@ -362,9 +483,12 @@ canvas {
                 <div id="networkBadge" class="network-badge">● Checking connection</div>
             </div>
 
-            <span class="photo-number">
-                Photo <span id="photoCounter">001</span>
-            </span>
+            <div class="header-actions">
+                <button id="installBtn" class="icon-button" type="button" aria-label="Install app" title="Install app">⬇️</button>
+                <span class="photo-number">
+                    Photo <span id="photoCounter">001</span>
+                </span>
+            </div>
 
         </div>
 
@@ -516,16 +640,27 @@ canvas {
                 id="downloadBtn"
                 class="blue">
 
-                💾 SAVE / SHARE
+                💾 SAVE & NEXT
 
             </button>
 
         </div>
 
-        <div class="save-hint">On supported phones, use the share sheet to save the image to Photos/Gallery.</div>
+        <div class="save-hint">Saves/shares the stamped JPG, then gets the camera ready for the next photo.</div>
 
     </div>
 
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <div id="installModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="installTitle">
+        <div class="install-card">
+            <h2 id="installTitle">📲 Add GPS Site Photo</h2>
+            <p id="installMessage">Install this app on your phone for quick access and offline use.</p>
+            <ol id="installSteps" class="install-steps"></ol>
+            <button id="closeInstallBtn" class="dark full-button" type="button">CLOSE</button>
+        </div>
+    </div>
 
     <canvas id="canvas"></canvas>
 
@@ -570,6 +705,11 @@ let compassHeading = null;
 let capturedImage = null;
 
 let logoImage = null;
+
+let gpsWatchId = null;
+let wakeLock = null;
+let deferredInstallPrompt = null;
+let lastGeocodeAt = 0;
 
 
 /* -------------------------
@@ -797,135 +937,91 @@ document
 
 
 /* =========================================================
-   GPS
+   GPS - CONTINUOUS HIGH-ACCURACY WATCH
    ========================================================= */
 
-function getGPS() {
+function startGPSWatch() {
 
     if (!navigator.geolocation) {
-
-        status.className =
-            "status status-error";
-
-        status.innerHTML =
-            "❌ GPS is not supported.";
-
+        status.className = "status status-error";
+        status.innerHTML = "❌ GPS is not supported.";
         return;
-
     }
 
+    if (gpsWatchId !== null) {
+        navigator.geolocation.clearWatch(gpsWatchId);
+    }
 
-    status.className =
-        "status status-warning";
+    status.className = "status status-warning";
+    status.innerHTML = "📍 Acquiring high-accuracy GPS...";
 
-    status.innerHTML =
-        "📍 Getting high-accuracy GPS...";
-
-
-    navigator.geolocation.getCurrentPosition(
-
+    gpsWatchId = navigator.geolocation.watchPosition(
         position => {
-
-            latitude =
-                position.coords.latitude;
-
-            longitude =
-                position.coords.longitude;
-
-            gpsAccuracy =
-                position.coords.accuracy;
-
+            latitude = position.coords.latitude;
+            longitude = position.coords.longitude;
+            gpsAccuracy = position.coords.accuracy;
 
             updateStatus();
 
-
-            reverseGeocode(
-                latitude,
-                longitude
-            );
-
+            const now = Date.now();
+            if (navigator.onLine && now - lastGeocodeAt > 60000) {
+                lastGeocodeAt = now;
+                reverseGeocode(latitude, longitude);
+            }
         },
-
-
         error => {
-
-            latitude = null;
-            longitude = null;
-            gpsAccuracy = null;
-
-            status.className =
-                "status status-warning";
-
-            status.innerHTML =
-                "⚠️ GPS unavailable.<br>" +
-                "Make sure Location Services are enabled.";
-
+            if (latitude === null) {
+                status.className = "status status-warning";
+                status.innerHTML =
+                    "⚠️ GPS unavailable.<br>Make sure Location Services are enabled.";
+            }
             console.error(error);
-
         },
-
-
         {
-
             enableHighAccuracy: true,
-
             timeout: 20000,
-
-            maximumAge: 5000
-
+            maximumAge: 3000
         }
-
     );
-
 }
 
+function getGPS() {
+    startGPSWatch();
+}
 
 /* =========================================================
    GPS STATUS
    ========================================================= */
 
+function getGPSQuality() {
+    if (gpsAccuracy === null) return { label: "Waiting", className: "fair" };
+    if (gpsAccuracy <= 8) return { label: "Excellent", className: "excellent" };
+    if (gpsAccuracy <= 15) return { label: "Good", className: "good" };
+    if (gpsAccuracy <= 30) return { label: "Fair", className: "fair" };
+    return { label: "Poor", className: "poor" };
+}
+
 function updateStatus() {
 
-    if (latitude === null) {
+    if (latitude === null) return;
 
-        return;
-
-    }
-
-
-    status.className =
-        "status status-ok";
-
+    const quality = getGPSQuality();
+    status.className = gpsAccuracy <= 30
+        ? "status status-ok"
+        : "status status-warning";
 
     status.innerHTML =
-
-        "📍 GPS: " +
-
-        latitude.toFixed(6) +
-
-        ", " +
-
-        longitude.toFixed(6) +
-
-        "<br>" +
-
-        "🎯 Accuracy: ±" +
-
-        Math.round(gpsAccuracy) +
-
-        " m" +
-
-        "<br>" +
-
-        "🧭 Heading: " +
-
-        (
-            compassHeading !== null
-                ? Math.round(compassHeading) + "°"
-                : "Not available"
-        );
-
+        '<div class="status-line"><span>📍 ' +
+        latitude.toFixed(6) + ", " + longitude.toFixed(6) +
+        '</span><span class="gps-quality ' + quality.className + '">' +
+        quality.label + '</span></div>' +
+        "🎯 Accuracy: ±" + Math.round(gpsAccuracy) + " m" +
+        "<br>🧭 Heading: " +
+        (compassHeading !== null
+            ? Math.round(compassHeading) + "°"
+            : "Not available");
 }
+
 
 
 /* =========================================================
@@ -1646,12 +1742,9 @@ document
     .addEventListener(
         "click",
         () => {
-
-            preview.style.display =
-                "none";
-
-            getGPS();
-
+            preview.style.display = "none";
+            capturedImage = null;
+            document.querySelector(".camera").scrollIntoView({ behavior: "smooth", block: "start" });
         }
     );
 
@@ -1712,6 +1805,28 @@ function fallbackDownload(filename) {
     document.body.removeChild(link);
 }
 
+
+function showToast(message) {
+    const toast = document.getElementById("toast");
+    toast.textContent = message;
+    toast.classList.add("show");
+    clearTimeout(showToast.timer);
+    showToast.timer = setTimeout(() => {
+        toast.classList.remove("show");
+    }, 2200);
+}
+
+function readyForNextPhoto() {
+    preview.style.display = "none";
+    capturedImage = null;
+    document.getElementById("notes").value = "";
+    document.querySelector(".camera").scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+    });
+    showToast("✓ Saved. Ready for the next photo.");
+}
+
 document
     .getElementById("downloadBtn")
     .addEventListener(
@@ -1744,6 +1859,7 @@ document
                         title: "GPS Site Photo"
                     });
 
+                    readyForNextPhoto();
                     return;
                 }
 
@@ -1761,6 +1877,7 @@ document
             }
 
             fallbackDownload(filename);
+            readyForNextPhoto();
 
         }
     );
@@ -1787,10 +1904,121 @@ function updateNetworkBadge() {
 
 window.addEventListener("online", () => {
     updateNetworkBadge();
-    getGPS();
+    lastGeocodeAt = 0;
+    if (latitude !== null) {
+        reverseGeocode(latitude, longitude);
+        lastGeocodeAt = Date.now();
+    }
 });
 
 window.addEventListener("offline", updateNetworkBadge);
+
+
+/* =========================================================
+   INSTALL APP
+   ========================================================= */
+
+function isStandalone() {
+    return window.matchMedia("(display-mode: standalone)").matches ||
+        window.navigator.standalone === true;
+}
+
+function isIOS() {
+    return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+function showInstallHelp() {
+    const modal = document.getElementById("installModal");
+    const steps = document.getElementById("installSteps");
+    const message = document.getElementById("installMessage");
+
+    steps.innerHTML = "";
+
+    const items = isIOS()
+        ? ["Open this page in Safari.", "Tap the Share button.", "Choose Add to Home Screen, then Add."]
+        : ["Open your browser menu.", "Choose Install app or Add to Home screen.", "Confirm the installation."];
+
+    message.textContent = isIOS()
+        ? "On iPhone/iPad, add the web app from Safari's Share menu."
+        : "Your browser can install this web app from its menu.";
+
+    items.forEach(text => {
+        const li = document.createElement("li");
+        li.textContent = text;
+        steps.appendChild(li);
+    });
+
+    modal.classList.add("show");
+}
+
+window.addEventListener("beforeinstallprompt", event => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    document.getElementById("installBtn").classList.remove("hidden");
+});
+
+window.addEventListener("appinstalled", () => {
+    deferredInstallPrompt = null;
+    document.getElementById("installBtn").classList.add("hidden");
+    showToast("✓ App installed.");
+});
+
+document.getElementById("installBtn").addEventListener("click", async () => {
+    if (isStandalone()) {
+        showToast("Already installed on this device.");
+        return;
+    }
+
+    if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        await deferredInstallPrompt.userChoice;
+        deferredInstallPrompt = null;
+        return;
+    }
+
+    showInstallHelp();
+});
+
+document.getElementById("closeInstallBtn").addEventListener("click", () => {
+    document.getElementById("installModal").classList.remove("show");
+});
+
+document.getElementById("installModal").addEventListener("click", event => {
+    if (event.target.id === "installModal") {
+        event.currentTarget.classList.remove("show");
+    }
+});
+
+if (isStandalone()) {
+    document.getElementById("installBtn").classList.add("hidden");
+}
+
+
+/* =========================================================
+   KEEP SCREEN AWAKE
+   ========================================================= */
+
+async function requestWakeLock() {
+    if (!("wakeLock" in navigator) || document.visibilityState !== "visible") {
+        return;
+    }
+
+    try {
+        wakeLock = await navigator.wakeLock.request("screen");
+        wakeLock.addEventListener("release", () => {
+            wakeLock = null;
+        });
+    }
+    catch (error) {
+        console.log("Screen wake lock unavailable", error);
+    }
+}
+
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+        requestWakeLock();
+    }
+});
 
 if ("serviceWorker" in navigator) {
 
@@ -1819,9 +2047,11 @@ updateNetworkBadge();
 
 startCamera();
 
-getGPS();
+startGPSWatch();
 
 startCompass();
+
+requestWakeLock();
 
 </script>
 

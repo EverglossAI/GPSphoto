@@ -1,8 +1,11 @@
-const CACHE_NAME = "gps-site-photo-v2";
+const CACHE_NAME = "gps-site-photo-v3";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./manifest.webmanifest"
+  "./manifest.webmanifest",
+  "./icon-180.png",
+  "./icon-192.png",
+  "./icon-512.png"
 ];
 
 self.addEventListener("install", event => {
@@ -27,12 +30,11 @@ self.addEventListener("activate", event => {
 
 self.addEventListener("fetch", event => {
   const request = event.request;
-
   if (request.method !== "GET") return;
 
   const url = new URL(request.url);
 
-  // Keep reverse geocoding network-only. GPS/camera/photo stamping still work offline.
+  // Reverse geocoding remains network-only. Camera/GPS/stamping work offline.
   if (url.hostname === "nominatim.openstreetmap.org") return;
 
   event.respondWith(
