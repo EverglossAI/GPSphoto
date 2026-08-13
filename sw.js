@@ -1,4 +1,4 @@
-const CACHE_NAME = "gps-site-photo-v4.1";
+const CACHE_NAME = "gps-site-photo-v4.2";
 const APP_SHELL = [
   "./",
   "./index.html",

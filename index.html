@@ -354,6 +354,68 @@ button:disabled {
     text-align: center;
 }
 
+/* PHOTO STAMP OPTIONS */
+.stamp-options {
+    margin-top: 14px;
+    padding: 13px;
+    border: 1px solid #334155;
+    border-radius: 12px;
+    background: #0b1220;
+}
+
+.stamp-options-title {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 4px;
+    color: #e2e8f0;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.stamp-options-hint {
+    margin-bottom: 10px;
+    color: #64748b;
+    font-size: 11px;
+    line-height: 1.4;
+}
+
+.stamp-options-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.stamp-check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 38px;
+    margin: 0;
+    padding: 7px 9px;
+    border: 1px solid #273449;
+    border-radius: 9px;
+    background: #0f172a;
+    color: #cbd5e1;
+    font-size: 12px;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+.stamp-check input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    padding: 0;
+    accent-color: #22c55e;
+    flex: 0 0 auto;
+}
+
+@media (max-width: 380px) {
+    .stamp-options-grid { grid-template-columns: 1fr; }
+}
+
 /* FOOTER */
 
 .footer {
@@ -530,7 +592,7 @@ canvas {
 
             <div>
                 <h1>📷 GPS Site Photo</h1>
-                <small>Site inspection camera · v4.1</small>
+                <small>Site inspection camera · v4.2</small>
                 <div id="networkBadge" class="network-badge">● Checking connection</div>
             </div>
 
@@ -612,6 +674,24 @@ canvas {
                 id="notes"
                 placeholder="Inspection notes, equipment number, work description..."></textarea>
 
+        </div>
+
+        <div class="stamp-options">
+            <div class="stamp-options-title">Photo stamp details</div>
+            <div class="stamp-options-hint">Choose what is permanently printed on saved photos. Your choices are remembered.</div>
+            <div class="stamp-options-grid">
+                <label class="stamp-check"><input type="checkbox" data-stamp-field="company" checked>Company</label>
+                <label class="stamp-check"><input type="checkbox" data-stamp-field="project" checked>Project</label>
+                <label class="stamp-check"><input type="checkbox" data-stamp-field="site" checked>Site</label>
+                <label class="stamp-check"><input type="checkbox" data-stamp-field="photo" checked>Photo number</label>
+                <label class="stamp-check"><input type="checkbox" data-stamp-field="gps" checked>GPS coordinates</label>
+                <label class="stamp-check"><input type="checkbox" data-stamp-field="accuracy" checked>GPS accuracy</label>
+                <label class="stamp-check"><input type="checkbox" data-stamp-field="heading" checked>Heading</label>
+                <label class="stamp-check"><input type="checkbox" data-stamp-field="datetime" checked>Date &amp; time</label>
+                <label class="stamp-check"><input type="checkbox" data-stamp-field="location" checked>Address / location</label>
+                <label class="stamp-check"><input type="checkbox" data-stamp-field="notes" checked>Notes</label>
+                <label class="stamp-check"><input type="checkbox" data-stamp-field="logo" checked>Company logo</label>
+            </div>
         </div>
 
         </div>
@@ -837,6 +917,38 @@ function loadSettings() {
     document.getElementById("site").value =
         localStorage.getItem("gpsphoto_site") || "";
 
+}
+
+
+function getStampOptions() {
+    const options = {};
+    document.querySelectorAll("[data-stamp-field]").forEach(input => {
+        options[input.dataset.stampField] = input.checked;
+    });
+    return options;
+}
+
+function saveStampOptions() {
+    localStorage.setItem(
+        "gpsphoto_stamp_options",
+        JSON.stringify(getStampOptions())
+    );
+}
+
+function loadStampOptions() {
+    let saved = null;
+    try {
+        saved = JSON.parse(localStorage.getItem("gpsphoto_stamp_options") || "null");
+    } catch (error) {
+        saved = null;
+    }
+
+    document.querySelectorAll("[data-stamp-field]").forEach(input => {
+        if (saved && Object.prototype.hasOwnProperty.call(saved, input.dataset.stampField)) {
+            input.checked = Boolean(saved[input.dataset.stampField]);
+        }
+        input.addEventListener("change", saveStampOptions);
+    });
 }
 
 
@@ -1474,164 +1586,119 @@ function capturePhoto() {
 
 
     let lines = [];
+    const stamp = getStampOptions();
 
 
-    if (company)
+    if (stamp.company && company)
         lines.push(
             "COMPANY: " +
             company
         );
 
 
-    if (project)
+    if (stamp.project && project)
         lines.push(
             "PROJECT: " +
             project
         );
 
 
-    if (site)
+    if (stamp.site && site)
         lines.push(
             "SITE: " +
             site
         );
 
 
-    lines.push(
-        "PHOTO: " +
-        formatPhotoNumber(
-            photoNumber
-        )
-    );
-
-
-    if (latitude !== null) {
-
+    if (stamp.photo) {
         lines.push(
-
-            "GPS: " +
-
-            latitude.toFixed(6) +
-
-            ", " +
-
-            longitude.toFixed(6)
-
+            "PHOTO: " +
+            formatPhotoNumber(
+                photoNumber
+            )
         );
-
-
-        lines.push(
-
-            "GPS ACCURACY: ±" +
-
-            Math.round(
-                gpsAccuracy
-            ) +
-
-            " m"
-
-        );
-
-    }
-
-    else {
-
-        lines.push(
-            "GPS: UNAVAILABLE"
-        );
-
     }
 
 
-    if (compassHeading !== null) {
-
-        lines.push(
-
-            "HEADING: " +
-
-            Math.round(
-                compassHeading
-            ) +
-
-            "°"
-
-        );
-
-    }
-
-
-    lines.push(
-        "DATE/TIME: " +
-        dateTime
-    );
-
-
-    if (address) {
-
-        let shortAddress =
-            address;
-
-
-        if (
-            shortAddress.length >
-            95
-        ) {
-
-            shortAddress =
-                shortAddress.substring(
-                    0,
-                    95
-                ) +
-                "...";
-
+    if (stamp.gps) {
+        if (latitude !== null) {
+            lines.push(
+                "GPS: " +
+                latitude.toFixed(6) +
+                ", " +
+                longitude.toFixed(6)
+            );
+        } else {
+            lines.push("GPS: UNAVAILABLE");
         }
+    }
 
+
+    if (stamp.accuracy && gpsAccuracy !== null) {
+        lines.push(
+            "GPS ACCURACY: ±" +
+            Math.round(gpsAccuracy) +
+            " m"
+        );
+    }
+
+
+    if (stamp.heading && compassHeading !== null) {
+        lines.push(
+            "HEADING: " +
+            Math.round(compassHeading) +
+            "°"
+        );
+    }
+
+
+    if (stamp.datetime) {
+        lines.push(
+            "DATE/TIME: " +
+            dateTime
+        );
+    }
+
+
+    if (stamp.location && address) {
+        let shortAddress = address;
+
+        if (shortAddress.length > 95) {
+            shortAddress =
+                shortAddress.substring(0, 95) +
+                "...";
+        }
 
         lines.push(
             "LOCATION: " +
             shortAddress
         );
-
     }
 
 
-    if (notes) {
+    if (stamp.notes && notes) {
+        let shortNotes = notes;
 
-        let shortNotes =
-            notes;
-
-
-        if (
-            shortNotes.length >
-            95
-        ) {
-
+        if (shortNotes.length > 95) {
             shortNotes =
-                shortNotes.substring(
-                    0,
-                    95
-                ) +
+                shortNotes.substring(0, 95) +
                 "...";
-
         }
-
 
         lines.push(
             "NOTES: " +
             shortNotes
         );
-
     }
-
 
     /* Stamp height */
 
-    const stampHeight =
+    const showLogo = Boolean(stamp.logo && logoImage && logoImage.complete);
+    const showStamp = lines.length > 0 || showLogo;
 
-        padding * 2 +
-
-        lines.length *
-        lineHeight;
+    const stampHeight = showStamp
+        ? padding * 2 + Math.max(lines.length * lineHeight, showLogo ? Math.round(55 * scale) : 0)
+        : 0;
 
 
     const stampTop =
@@ -1641,29 +1708,22 @@ function capturePhoto() {
 
     /* Background */
 
-    ctx.fillStyle =
-        "rgba(0,0,0,0.80)";
+    if (showStamp) {
+        ctx.fillStyle =
+            "rgba(0,0,0,0.80)";
 
-
-    ctx.fillRect(
-
-        0,
-
-        stampTop,
-
-        canvas.width,
-
-        stampHeight
-
-    );
+        ctx.fillRect(
+            0,
+            stampTop,
+            canvas.width,
+            stampHeight
+        );
+    }
 
 
     /* Logo */
 
-    if (
-        logoImage &&
-        logoImage.complete
-    ) {
+    if (showLogo) {
 
         const maxLogoWidth =
             160 * scale;
@@ -1752,30 +1812,18 @@ function capturePhoto() {
 
     /* GPS green dot */
 
-    ctx.fillStyle =
-        "#22c55e";
-
-
-    ctx.beginPath();
-
-
-    ctx.arc(
-
-        canvas.width -
-        padding,
-
-        padding,
-
-        8 * scale,
-
-        0,
-
-        Math.PI * 2
-
-    );
-
-
-    ctx.fill();
+    if (stamp.gps && latitude !== null) {
+        ctx.fillStyle = "#22c55e";
+        ctx.beginPath();
+        ctx.arc(
+            canvas.width - padding,
+            padding,
+            8 * scale,
+            0,
+            Math.PI * 2
+        );
+        ctx.fill();
+    }
 
 
     /* Create JPG */
@@ -2269,6 +2317,7 @@ if ("serviceWorker" in navigator) {
    ========================================================= */
 
 loadSettings();
+loadStampOptions();
 updateDetailsSummary();
 updateNetworkBadge();
 
